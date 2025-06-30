@@ -53,6 +53,9 @@ protected:
 public:
 	AUnreal5ToolsCharacter();
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Inventory)
+	class UStorageComponent* StorageComponent;
+
 protected:
 
 	/** Called from Input Actions for movement input */

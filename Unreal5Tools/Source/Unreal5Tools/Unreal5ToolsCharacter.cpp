@@ -8,6 +8,7 @@
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include <InventoryPlugin/Components/StorageComponent.h>
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -46,6 +47,9 @@ AUnreal5ToolsCharacter::AUnreal5ToolsCharacter()
 	// Configure character movement
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
 	GetCharacterMovement()->AirControl = 0.5f;
+
+	StorageComponent = CreateDefaultSubobject<UStorageComponent>(TEXT("StorageComponent"));
+	StorageComponent->Capacity = 20;
 }
 
 void AUnreal5ToolsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
