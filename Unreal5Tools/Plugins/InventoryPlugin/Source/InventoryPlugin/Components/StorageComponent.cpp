@@ -2,6 +2,8 @@
 
 
 #include "StorageComponent.h"
+#include "Engine/DataTable.h"
+#include "../Base/BaseItem.h"
 
 // Sets default values for this component's properties
 UStorageComponent::UStorageComponent()
@@ -30,5 +32,132 @@ void UStorageComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	// ...
+}
+
+void UStorageComponent::UpdateUI()
+{
+	
+}
+
+int UStorageComponent::GetFirstEmpty()
+{
+	for (FInventoryItem a : Items)
+	{
+		if (a.IsEmpty)
+		{
+			return a.Index;
+		}
+	}
+	return -1;
+}
+
+int UStorageComponent::AddEmptyAtIndex(int index)
+{
+	FInventoryItem empty = FInventoryItem();
+	empty.Index = index;
+	empty.IsEmpty = true;
+	empty.ItemOwner = this;
+	Items.Insert(empty, index);
+	UpdateUI();
+	return index;
+}
+
+bool UStorageComponent::AddItem(FInventoryItem item)
+{
+	if (SlotsFilled >= Capacity)
+	{
+		OnInventoryFull.Broadcast();
+		return false;
+	}
+
+	// process if the item is stackable
+	if (dataTable)
+	{
+		FItemRow* ItemRow = dataTable->FindRow<FItemRow>(item.UniqueName, "");
+
+		int pendingStackSize = item.StackSize;
+
+		if (ItemRow->IsStackable)
+		{
+			for (FInventoryItem& a : Items)
+			{
+				if (a == item)
+				{
+					if (!ItemRow->HasMaxStackSize)
+					{
+						a.StackSize += pendingStackSize;
+						UpdateUI();
+						return true;
+					}
+					else
+					{
+						if (a.StackSize < ItemRow->MaxStackSize)
+						{
+							int oldStackSize = a.StackSize;
+
+							// overflows max stack size, we want to max out the stack size
+							// and subtract from the pending stack size and continue
+							if (oldStackSize + pendingStackSize > ItemRow->MaxStackSize)
+							{
+								int diff = (oldStackSize + pendingStackSize) - ItemRow->MaxStackSize;
+								a.StackSize = ItemRow->MaxStackSize;
+								pendingStackSize = diff;
+							}
+							else
+							{
+								a.StackSize += pendingStackSize;
+								pendingStackSize = 0;
+							}
+						}
+					}
+				}
+				if (pendingStackSize == 0)
+				{
+					UpdateUI();
+					return true;
+				}
+			}
+		}
+
+		int newIndex = GetFirstEmpty();
+		Items.RemoveAt(newIndex);
+
+		item.Index = newIndex;
+		item.StackSize = pendingStackSize;
+		item.ItemOwner = this;
+
+		Items.Insert(item, newIndex);
+		SlotsFilled++;
+
+		UpdateUI();
+		return true;
+	}
+	
+	return false;
+}
+
+void UStorageComponent::ServerAddBPItem(FInventoryItem item)
+{
+	AddItem(item);
+}
+
+bool UStorageComponent::RemoveItem(FInventoryItem item)
+{
+	int index = item.Index;
+	if (item.Index > -1)
+	{
+		Items.RemoveAt(index);
+
+		// AddEmptyAtIndex(Index);
+		SlotsFilled--;
+		UpdateUI();
+		return true;
+	}
+	return false;
+}
+
+void UStorageComponent::ServerRemoveBPItem(FInventoryItem item)
+{
+	RemoveItem(item);
 }
 

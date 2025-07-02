@@ -33,7 +33,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory)
 	TArray<FInventoryItem> Items;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Inventory)
 	class UDataTable* dataTable;
 
 	UPROPERTY(BlueprintAssignable, Category = Inventory)
@@ -44,9 +44,28 @@ public:
 	
 #pragma endregion Variables
 
+#pragma region Functions
+
+	void UpdateUI();
+	
+	int GetFirstEmpty();
+	int AddEmptyAtIndex(int index);
+	
+	bool AddItem(FInventoryItem item);
+	bool RemoveItem(FInventoryItem item);
+	
+#pragma endregion Functions
+	
 #pragma region BP Functions
+	
 	UFUNCTION(BlueprintCallable, Category = Inventory)
 	TArray<FInventoryItem> GetItems() {return Items;}
+
+	UFUNCTION(BlueprintCallable, Category = Inventory)
+	void ServerAddBPItem(FInventoryItem item);
+
+	UFUNCTION(BlueprintCallable, Category = Inventory)
+	void ServerRemoveBPItem(FInventoryItem item);
 
 #pragma endregion BP Functions
 	
