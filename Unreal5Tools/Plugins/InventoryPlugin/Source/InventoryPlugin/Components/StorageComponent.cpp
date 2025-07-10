@@ -4,6 +4,7 @@
 #include "StorageComponent.h"
 #include "Engine/DataTable.h"
 #include "../Base/BaseItem.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values for this component's properties
 UStorageComponent::UStorageComponent()
@@ -34,9 +35,23 @@ void UStorageComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	// ...
 }
 
+void UStorageComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UStorageComponent, Capacity);
+	DOREPLIFETIME(UStorageComponent, SlotsFilled);
+	DOREPLIFETIME(UStorageComponent, Items);
+}
+
+void UStorageComponent::OnRep_StorageUpdated()
+{
+	OnInventoryUpdated.Broadcast();
+}
+
 void UStorageComponent::UpdateUI()
 {
-	
+	OnInventoryUpdated.Broadcast();
 }
 
 int UStorageComponent::GetFirstEmpty()
@@ -136,11 +151,6 @@ bool UStorageComponent::AddItem(FInventoryItem item)
 	return false;
 }
 
-void UStorageComponent::ServerAddBPItem(FInventoryItem item)
-{
-	AddItem(item);
-}
-
 bool UStorageComponent::RemoveItem(FInventoryItem item)
 {
 	int index = item.Index;
@@ -156,8 +166,69 @@ bool UStorageComponent::RemoveItem(FInventoryItem item)
 	return false;
 }
 
-void UStorageComponent::ServerRemoveBPItem(FInventoryItem item)
+bool UStorageComponent::HasItem(FName uniqueName, int stackSize)
+{
+	int pendingCount = stackSize;
+	for (FInventoryItem& a : Items)
+	{
+		if (a.UniqueName == uniqueName)
+		{
+			pendingCount -= a.StackSize;
+			if (pendingCount <= 0)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool UStorageComponent::RemoveItemStack(FName uniqueName, int stackSize)
+{
+	int pendingCount = stackSize;
+
+	for (FInventoryItem& a : Items)
+	{
+		if (a.UniqueName == uniqueName)
+		{
+			if (a.StackSize <= pendingCount)
+			{
+				pendingCount -= a.StackSize;
+				RemoveItem(a);
+			}
+			else
+			{
+				a.StackSize -= pendingCount;
+				pendingCount = 0;
+			}
+		}
+		if (pendingCount <= 0)
+		{
+			UpdateUI();
+			return true;
+		}
+	}
+	return false;
+}
+
+void UStorageComponent::ServerAddBPItem_Implementation(FInventoryItem item)
+{
+	AddItem(item);
+}
+
+void UStorageComponent::ServerRemoveBPItem_Implementation(FInventoryItem item)
 {
 	RemoveItem(item);
+}
+
+bool UStorageComponent::BPHasItem(FName uniqueName, int stackSize)
+{
+	return HasItem(uniqueName, stackSize);
+}
+
+void UStorageComponent::ServerRemoveBPItemStack_Implementation(FName uniqueName, int stackSize)
+{
+	RemoveItemStack(uniqueName, stackSize);
 }
 
