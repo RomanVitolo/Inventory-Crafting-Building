@@ -22,7 +22,15 @@ void UStorageComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
+	for (int i = 0; i < Capacity; i++)
+	{
+		FInventoryItem item = FInventoryItem();
+		item.Index = i;
+		item.StackSize = 0;
+		item.ItemOwner = this;
+		item.IsEmpty = true;
+		Items.Add(item);
+	}
 	
 }
 
